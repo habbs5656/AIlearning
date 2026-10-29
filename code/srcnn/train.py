@@ -10,6 +10,7 @@ r"""训练脚本。
 验证集 PSNR 最优的模型存到 models\srcnn_best.pth。
 """
 import argparse
+import random
 import os
 import time
 
@@ -23,6 +24,13 @@ from dataset import TrainDataset, EvalDataset
 from utils import psnr
 
 
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 def evaluate(model: nn.Module, ds: EvalDataset, device) -> float:
     model.eval()
     total = 0.0
@@ -32,6 +40,14 @@ def evaluate(model: nn.Module, ds: EvalDataset, device) -> float:
             sr = model(lr.unsqueeze(0).to(device))[0].clamp(0, 1).cpu().numpy()
             total += psnr(sr, hr.numpy())
     model.train()
+    return total / len(ds
+                       )
+def evaluate_baseline(ds: EvalDataset)->float:
+    total = 0.0
+    with torch.no_grad():
+         for i in range(len(ds)):
+             lr, hr = ds[i]
+             total += psnr(lr.numpy(), hr.numpy())
     return total / len(ds)
 
 
@@ -44,7 +60,8 @@ def main():
     ap.add_argument('--batch-size', type=int, default=16)
     ap.add_argument('--patch-size', type=int, default=96)
     ap.add_argument('--lr', type=float, default=1e-4, help='学习率')
-    ap.add_argument('--num-workers', type=int, default=4)
+    ap.add_argument('--seed', type=int, default=42)
+    ap.add_argument('--num-workers', type=int, default=0)
     ap.add_argument('--samples-per-image', type=int, default=100,
                     help='每张训练图每 epoch 采样的 patch 数')
     ap.add_argument('--smoke', action='store_true',
@@ -59,6 +76,7 @@ def main():
         args.num_workers = 0
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    set_seed(args.seed)
 
     log_lines = []
 
@@ -79,6 +97,9 @@ def main():
                           drop_last=True)
     log(f'train  : {len(train_ds)} samples ({len(train_ds.files)} images)')
     log(f'eval   : {len(eval_ds)} images')
+
+    baseline = evaluate_baseline(eval_ds)
+    log(f'bicubic: {baseline:.2f} dB  <- 网络的起点, 也是底线')
 
     model = SRCNN().to(device)
     criterion = nn.MSELoss()
@@ -108,7 +129,9 @@ def main():
             torch.save(model.state_dict(), 'models/srcnn_best.pth')
             mark = '  <- best, saved'
         log(f'epoch {epoch:3d}/{args.epochs} | loss {train_loss:.6f} | '
-            f'eval PSNR {eval_psnr:.2f} dB | {time.time() - t0:.1f}s{mark}')
+            f'eval {eval_psnr:.2f} dB ({eval_psnr - baseline:+.2f} vs bicubic) | '
+            f'{time.time() - t0:.1f}s{mark}')
+
 
     torch.save(model.state_dict(), 'models/srcnn_last.pth')
     log(f'done. best eval PSNR = {best_psnr:.2f} dB -> models/srcnn_best.pth')

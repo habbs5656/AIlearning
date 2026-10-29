@@ -35,6 +35,9 @@ datasets/
 raw/
 !data/.gitkeep
 
+# 训练产物：权重、日志、checkpoint 都算本地产物，只留代码
+models/
+
 # ---------- 密钥与环境变量 ----------
 .env
 .env.*
