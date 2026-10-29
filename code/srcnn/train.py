@@ -31,24 +31,28 @@ def set_seed(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-def evaluate(model: nn.Module, ds: EvalDataset, device) -> float:
+def evaluate(model: nn.Module, ds: EvalDataset, device):
+    """返回 (平均 PSNR, 每张图的 PSNR 列表)"""
     model.eval()
-    total = 0.0
+    scores = []
     with torch.no_grad():
         for i in range(len(ds)):
             lr, hr = ds[i]
             sr = model(lr.unsqueeze(0).to(device))[0].clamp(0, 1).cpu().numpy()
-            total += psnr(sr, hr.numpy())
+            scores.append(psnr(sr, hr.numpy()))
     model.train()
-    return total / len(ds
-                       )
-def evaluate_baseline(ds: EvalDataset)->float:
-    total = 0.0
+    return float(np.mean(scores)), scores
+
+
+def evaluate_baseline(ds: EvalDataset):
+    """bicubic 基线: 输入就是 bicubic 放大的结果, 直接拿它判分"""
+    scores = []
     with torch.no_grad():
-         for i in range(len(ds)):
-             lr, hr = ds[i]
-             total += psnr(lr.numpy(), hr.numpy())
-    return total / len(ds)
+        for i in range(len(ds)):
+            lr, hr = ds[i]
+            scores.append(psnr(lr.numpy(), hr.numpy()))
+    return float(np.mean(scores)), scores
+
 
 
 def main():
@@ -98,7 +102,7 @@ def main():
     log(f'train  : {len(train_ds)} samples ({len(train_ds.files)} images)')
     log(f'eval   : {len(eval_ds)} images')
 
-    baseline = evaluate_baseline(eval_ds)
+    baseline, base_per_img = evaluate_baseline(eval_ds)
     log(f'bicubic: {baseline:.2f} dB  <- 网络的起点, 也是底线')
 
     model = SRCNN().to(device)
@@ -122,7 +126,8 @@ def main():
             n += lr_img.size(0)
         train_loss = loss_sum / n
 
-        eval_psnr = evaluate(model, eval_ds, device)
+        eval_psnr, per_img = evaluate(model, eval_ds, device)
+
         mark = ''
         if eval_psnr > best_psnr:
             best_psnr = eval_psnr
@@ -135,6 +140,14 @@ def main():
 
     torch.save(model.state_dict(), 'models/srcnn_last.pth')
     log(f'done. best eval PSNR = {best_psnr:.2f} dB -> models/srcnn_best.pth')
+
+    log('per-image PSNR  (bicubic -> model):')
+    for name, b, s in zip(eval_ds.files, base_per_img, per_img):
+        log(f'  {os.path.basename(name):<28} {b:6.2f} -> {s:6.2f}   ({s - b:+.2f})')
+    log(f'spread: bicubic std {np.std(base_per_img):.3f} | '
+        f'model std {np.std(per_img):.3f} | '
+        f'model range {max(per_img) - min(per_img):.2f} dB')
+
 
     with open(args.log_file, 'a', encoding='utf-8') as f:
         f.write('\n'.join(log_lines) + '\n')
