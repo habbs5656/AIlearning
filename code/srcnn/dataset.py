@@ -34,10 +34,14 @@ def to_tensor(img: Image.Image) -> torch.Tensor:
     return torch.from_numpy(np.ascontiguousarray(arr.transpose(2, 0, 1)))
 
 
-def degrade(img: Image.Image, scale: int) -> Image.Image:
-    """HR -> 双三次缩小再放大, 得到模糊的 LR(尺寸与 HR 相同)"""
+RESAMPLE = {'bicubic': Image.BICUBIC, 'bilinear': Image.BILINEAR,
+            'box': Image.BOX, 'nearest': Image.NEAREST}
+
+
+def degrade(img: Image.Image, scale: int, method: str = 'bicubic') -> Image.Image:
+    """HR -> 缩小再双三次放大, 得到模糊的 LR(尺寸与 HR 相同)"""
     w, h = img.size
-    small = img.resize((w // scale, h // scale), Image.BICUBIC)
+    small = img.resize((w // scale, h // scale), RESAMPLE[method])
     return small.resize((w, h), Image.BICUBIC)
 
 
@@ -45,11 +49,14 @@ class TrainDataset(Dataset):
     """训练集: 随机裁 patch + 随机翻转, 每张图复用 samples_per_image 次"""
 
     def __init__(self, root: str, patch_size: int = 96, scale: int = 3,
-                 samples_per_image: int = 100):
+                 samples_per_image: int = 100,
+                 degrade_method: str = 'bicubic', flip: bool = True):
         self.files = list_images(root)
         self.patch_size = patch_size
         self.scale = scale
         self.samples_per_image = samples_per_image
+        self.degrade_method = degrade_method
+        self.flip = flip
 
     def __len__(self):
         return len(self.files) * self.samples_per_image
@@ -71,12 +78,13 @@ class TrainDataset(Dataset):
         hr_patch = img.crop((x0, y0, x0 + p, y0 + p))
 
         # 随机水平/垂直翻转
-        if random.random() < 0.5:
-            hr_patch = hr_patch.transpose(Image.FLIP_LEFT_RIGHT)
-        if random.random() < 0.5:
-            hr_patch = hr_patch.transpose(Image.FLIP_TOP_BOTTOM)
+        if self.flip:
+            if random.random() < 0.5:
+                hr_patch = hr_patch.transpose(Image.FLIP_LEFT_RIGHT)
+            if random.random() < 0.5:
+                hr_patch = hr_patch.transpose(Image.FLIP_TOP_BOTTOM)
 
-        lr_patch = degrade(hr_patch, self.scale)
+        lr_patch = degrade(hr_patch, self.scale, self.degrade_method)
         return to_tensor(lr_patch), to_tensor(hr_patch)
 
 

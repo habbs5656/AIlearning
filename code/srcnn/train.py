@@ -67,10 +67,19 @@ def main():
                     help='三层卷积的核大小, 必须都是奇数')
     ap.add_argument('--widths', type=int, nargs=2, default=[64, 32],
                     help='前两层输出通道数')
-    ap.add_argument('--optimizer', choices=['adam', 'sgd'], default='adam',
+    ap.add_argument('--optimizer', choices=['adam', 'sgd', 'adamw'], default='adam',
                     help='优化器')
     ap.add_argument('--tag', default='default',
                     help='实验名, 决定模型和日志文件名')
+    ap.add_argument('--layers', type=int, default=3,
+                    help='总卷积层数, >3 时在中间插 3x3 层')
+    ap.add_argument('--residual', action='store_true',
+                    help='全局残差: 输出 = 输入 + 网络输出')
+    ap.add_argument('--train-degrade', default='bicubic',
+                    choices=['bicubic', 'bilinear', 'box', 'nearest'],
+                    help='训练时缩小用的算法, 评测固定 bicubic')
+    ap.add_argument('--no-flip', action='store_true',
+                    help='关闭随机翻转增强')
 
     args = ap.parse_args()
 
@@ -80,7 +89,8 @@ def main():
         args.patch_size = 64
         args.num_workers = 0
     if args.log_file is None:
-        args.log_file = f'models/train_log_{args.tag}.txt'
+        folder = 'models' if args.smoke else 'logs'
+        args.log_file = f'{folder}/train_log_{args.tag}.txt'
     best_path = f'models/srcnn_{args.tag}_best.pth'
     last_path = f'models/srcnn_{args.tag}_last.pth'
 
@@ -99,7 +109,9 @@ def main():
 
     train_ds = TrainDataset(args.train_dir, patch_size=args.patch_size,
                             scale=args.scale,
-                            samples_per_image=args.samples_per_image)
+                            samples_per_image=args.samples_per_image,
+                            degrade_method=args.train_degrade,
+                            flip=not args.no_flip)
     eval_ds = EvalDataset(args.eval_dir, scale=args.scale)
     train_dl = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
                           num_workers=args.num_workers, pin_memory=True,
@@ -110,11 +122,15 @@ def main():
     baseline, base_per_img = evaluate_baseline(eval_ds)
     log(f'bicubic: {baseline:.2f} dB  <- 网络的起点, 也是底线')
 
-    model = SRCNN(kernels=tuple(args.kernels), widths=tuple(args.widths)).to(device)
+    assert args.layers >= 3, '--layers 至少 3'
+    model = SRCNN(kernels=tuple(args.kernels), widths=tuple(args.widths),
+                  extra_layers=args.layers - 3, residual=args.residual).to(device)
 
     criterion = nn.MSELoss()
     if args.optimizer == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    elif args.optimizer == 'adamw':
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
 

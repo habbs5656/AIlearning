@@ -17,23 +17,30 @@ import torch.nn as nn
 
 class SRCNN(nn.Module):
     def __init__(self, num_channels: int = 3,
-                 kernels=(9, 5, 5), widths=(64, 32)):
+                 kernels=(9, 5, 5), widths=(64, 32),
+                 extra_layers: int = 0, residual: bool = False):
         super().__init__()
         assert len(kernels) == 3, 'kernels 要 3 个: 特征提取/非线性映射/重建'
         assert len(widths) == 2, 'widths 要 2 个: 前两层的输出通道数'
         assert all(k % 2 == 1 for k in kernels), '核大小必须是奇数, 否则尺寸会变'
         k1, k2, k3 = kernels
         w1, w2 = widths
-        self.net = nn.Sequential(
+        layers = [
             nn.Conv2d(num_channels, w1, kernel_size=k1, padding=k1 // 2),  # 特征提取
             nn.ReLU(inplace=True),
             nn.Conv2d(w1, w2, kernel_size=k2, padding=k2 // 2),           # 非线性映射
             nn.ReLU(inplace=True),
-            nn.Conv2d(w2, num_channels, kernel_size=k3, padding=k3 // 2), # 重建
-        )
+        ]
+        for _ in range(extra_layers):                                     # 加深: 中间插 3x3
+            layers += [nn.Conv2d(w2, w2, kernel_size=3, padding=1),
+                       nn.ReLU(inplace=True)]
+        layers.append(nn.Conv2d(w2, num_channels, kernel_size=k3, padding=k3 // 2))  # 重建
+        self.net = nn.Sequential(*layers)
+        self.residual = residual
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
+        out = self.net(x)
+        return x + out if self.residual else out
 
 
 
