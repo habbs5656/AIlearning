@@ -1,0 +1,23 @@
+device : cuda (NVIDIA GeForce RTX 5070 Ti Laptop GPU)
+args   : {'train_dir': 'data/train', 'eval_dir': 'data/eval', 'scale': 3, 'epochs': 10, 'batch_size': 16, 'patch_size': 96, 'lr': 0.0001, 'seed': 3, 'num_workers': 0, 'samples_per_image': 100, 'smoke': False, 'log_file': 'models/train_log_A_s3.txt', 'kernels': [9, 5, 5], 'widths': [64, 32], 'optimizer': 'adam', 'tag': 'A_s3'}
+train  : 20000 samples (200 images)
+eval   : 5 images
+bicubic: 29.08 dB  <- 网络的起点, 也是底线
+epoch   1/10 | loss 0.006367 | eval 29.54 dB (+0.46 vs bicubic) | 31.6s  <- best, saved
+epoch   2/10 | loss 0.003282 | eval 29.87 dB (+0.79 vs bicubic) | 31.5s  <- best, saved
+epoch   3/10 | loss 0.003215 | eval 30.03 dB (+0.96 vs bicubic) | 33.3s  <- best, saved
+epoch   4/10 | loss 0.003081 | eval 30.15 dB (+1.08 vs bicubic) | 33.3s  <- best, saved
+epoch   5/10 | loss 0.003024 | eval 29.84 dB (+0.76 vs bicubic) | 33.3s
+epoch   6/10 | loss 0.003041 | eval 30.31 dB (+1.23 vs bicubic) | 33.4s  <- best, saved
+epoch   7/10 | loss 0.002990 | eval 30.27 dB (+1.19 vs bicubic) | 33.2s
+epoch   8/10 | loss 0.003026 | eval 30.41 dB (+1.33 vs bicubic) | 33.4s  <- best, saved
+epoch   9/10 | loss 0.002993 | eval 30.40 dB (+1.33 vs bicubic) | 33.3s
+epoch  10/10 | loss 0.002965 | eval 30.37 dB (+1.29 vs bicubic) | 33.3s
+done. best eval PSNR = 30.41 dB -> models/srcnn_A_s3_best.pth
+per-image PSNR  (bicubic -> model):
+  baby.png                      32.64 ->  33.38   (+0.73)
+  bird.png                      31.15 ->  32.52   (+1.37)
+  butterfly.png                 22.73 ->  25.43   (+2.71)
+  head.png                      31.62 ->  31.91   (+0.29)
+  woman.png                     27.24 ->  28.59   (+1.35)
+spread: bicubic std 3.665 | model std 2.952 | model range 7.94 dB
