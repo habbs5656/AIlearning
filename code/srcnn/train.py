@@ -1,14 +1,4 @@
-r"""训练脚本。
-
-用法(在 D:\Aigeneration\srcnn 目录下):
-    快速冒烟测试:
-        D:\Aigeneration\venvs\pytorch\Scripts\python.exe train.py --smoke
-    正式训练(自己放图到 data\train 和 data\eval):
-        D:\Aigeneration\venvs\pytorch\Scripts\python.exe train.py --epochs 100
-
-日志同时打印到控制台并写入 models\train_log.txt,
-验证集 PSNR 最优的模型存到 models\srcnn_best.pth。
-"""
+"""训练脚本。"""
 import argparse
 import random
 import os
@@ -70,14 +60,29 @@ def main():
                     help='每张训练图每 epoch 采样的 patch 数')
     ap.add_argument('--smoke', action='store_true',
                     help='冒烟模式: 极小规模快速跑通全流程')
-    ap.add_argument('--log-file', default='models/train_log.txt')
+    ap.add_argument('--log-file', default=None,
+                    help='日志路径, 不填自动用 models/train_log_<tag>.txt')
+
+    ap.add_argument('--kernels', type=int, nargs=3, default=[9, 5, 5],
+                    help='三层卷积的核大小, 必须都是奇数')
+    ap.add_argument('--widths', type=int, nargs=2, default=[64, 32],
+                    help='前两层输出通道数')
+    ap.add_argument('--optimizer', choices=['adam', 'sgd'], default='adam',
+                    help='优化器')
+    ap.add_argument('--tag', default='default',
+                    help='实验名, 决定模型和日志文件名')
+
     args = ap.parse_args()
 
-    if args.smoke:  # 冒烟模式参数覆盖
+    if args.smoke:
         args.epochs = 2
         args.batch_size = 8
         args.patch_size = 64
         args.num_workers = 0
+    if args.log_file is None:
+        args.log_file = f'models/train_log_{args.tag}.txt'
+    best_path = f'models/srcnn_{args.tag}_best.pth'
+    last_path = f'models/srcnn_{args.tag}_last.pth'
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     set_seed(args.seed)
@@ -105,9 +110,13 @@ def main():
     baseline, base_per_img = evaluate_baseline(eval_ds)
     log(f'bicubic: {baseline:.2f} dB  <- 网络的起点, 也是底线')
 
-    model = SRCNN().to(device)
+    model = SRCNN(kernels=tuple(args.kernels), widths=tuple(args.widths)).to(device)
+
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    if args.optimizer == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
 
     best_psnr = -1.0
     os.makedirs(os.path.dirname(args.log_file) or '.', exist_ok=True)
@@ -131,16 +140,15 @@ def main():
         mark = ''
         if eval_psnr > best_psnr:
             best_psnr = eval_psnr
-            torch.save(model.state_dict(), 'models/srcnn_best.pth')
+            torch.save(model.state_dict(), best_path)
             mark = '  <- best, saved'
         log(f'epoch {epoch:3d}/{args.epochs} | loss {train_loss:.6f} | '
             f'eval {eval_psnr:.2f} dB ({eval_psnr - baseline:+.2f} vs bicubic) | '
             f'{time.time() - t0:.1f}s{mark}')
 
 
-    torch.save(model.state_dict(), 'models/srcnn_last.pth')
-    log(f'done. best eval PSNR = {best_psnr:.2f} dB -> models/srcnn_best.pth')
-
+    torch.save(model.state_dict(), last_path)
+    log(f'done. best eval PSNR = {best_psnr:.2f} dB -> {best_path}')
     log('per-image PSNR  (bicubic -> model):')
     for name, b, s in zip(eval_ds.files, base_per_img, per_img):
         log(f'  {os.path.basename(name):<28} {b:6.2f} -> {s:6.2f}   ({s - b:+.2f})')
