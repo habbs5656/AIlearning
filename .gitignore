@@ -58,3 +58,6 @@ credentials.json
 Thumbs.db
 desktop.ini
 ~$*
+
+# 笔记、评估报告只留本地
+notes/
