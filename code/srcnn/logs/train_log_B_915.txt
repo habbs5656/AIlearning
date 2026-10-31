@@ -2,7 +2,7 @@ device : cuda (NVIDIA GeForce RTX 5070 Ti Laptop GPU)
 args   : {'train_dir': 'data/train', 'eval_dir': 'data/eval', 'scale': 3, 'epochs': 10, 'batch_size': 16, 'patch_size': 96, 'lr': 0.0001, 'seed': 1, 'num_workers': 0, 'samples_per_image': 100, 'smoke': False, 'log_file': 'logs/train_log_B_915.txt', 'kernels': [9, 1, 5], 'widths': [64, 32], 'optimizer': 'adam', 'tag': 'B_915', 'layers': 3, 'residual': False, 'train_degrade': 'bicubic', 'no_flip': False}
 train  : 20000 samples (200 images)
 eval   : 5 images
-bicubic: 29.08 dB  <- 网络的起点, 也是底线
+bicubic: 29.08 dB  
 epoch   1/10 | loss 0.009314 | eval 29.06 dB (-0.01 vs bicubic) | 25.1s  <- best, saved
 epoch   2/10 | loss 0.003424 | eval 29.52 dB (+0.44 vs bicubic) | 25.1s  <- best, saved
 epoch   3/10 | loss 0.003257 | eval 29.57 dB (+0.50 vs bicubic) | 26.3s  <- best, saved
