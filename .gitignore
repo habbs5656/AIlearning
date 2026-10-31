@@ -61,4 +61,7 @@ desktop.ini
 ~$*
 
 # 笔记、评估报告只留本地
-notes/
+notes/*
+!notes/srcnn/
+notes/srcnn/*
+!notes/srcnn/术语表.md
