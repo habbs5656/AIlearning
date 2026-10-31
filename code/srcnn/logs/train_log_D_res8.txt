@@ -1,0 +1,43 @@
+device : cuda (NVIDIA GeForce RTX 5070 Ti Laptop GPU)
+args   : {'train_dir': 'data/train', 'eval_dir': 'data/eval', 'scale': 3, 'epochs': 30, 'batch_size': 16, 'patch_size': 96, 'lr': 0.0001, 'seed': 1, 'num_workers': 0, 'samples_per_image': 100, 'smoke': False, 'log_file': 'logs/train_log_D_res8.txt', 'kernels': [9, 5, 5], 'widths': [64, 32], 'optimizer': 'adam', 'tag': 'D_res8', 'layers': 8, 'residual': True, 'train_degrade': 'bicubic', 'no_flip': False}
+train  : 20000 samples (200 images)
+eval   : 5 images
+bicubic: 29.08 dB  <- 网络的起点, 也是底线
+epoch   1/30 | loss 0.003054 | eval 30.62 dB (+1.55 vs bicubic) | 39.9s  <- best, saved
+epoch   2/30 | loss 0.002866 | eval 30.89 dB (+1.81 vs bicubic) | 40.7s  <- best, saved
+epoch   3/30 | loss 0.002788 | eval 30.91 dB (+1.83 vs bicubic) | 41.7s  <- best, saved
+epoch   4/30 | loss 0.002788 | eval 31.14 dB (+2.07 vs bicubic) | 41.7s  <- best, saved
+epoch   5/30 | loss 0.002757 | eval 31.14 dB (+2.07 vs bicubic) | 41.9s
+epoch   6/30 | loss 0.002740 | eval 31.19 dB (+2.11 vs bicubic) | 41.8s  <- best, saved
+epoch   7/30 | loss 0.002733 | eval 31.24 dB (+2.16 vs bicubic) | 41.9s  <- best, saved
+epoch   8/30 | loss 0.002738 | eval 31.21 dB (+2.14 vs bicubic) | 41.7s
+epoch   9/30 | loss 0.002722 | eval 31.31 dB (+2.24 vs bicubic) | 41.8s  <- best, saved
+epoch  10/30 | loss 0.002719 | eval 31.30 dB (+2.23 vs bicubic) | 42.0s
+epoch  11/30 | loss 0.002653 | eval 31.39 dB (+2.31 vs bicubic) | 42.2s  <- best, saved
+epoch  12/30 | loss 0.002682 | eval 31.37 dB (+2.29 vs bicubic) | 42.3s
+epoch  13/30 | loss 0.002719 | eval 31.33 dB (+2.25 vs bicubic) | 42.5s
+epoch  14/30 | loss 0.002636 | eval 31.37 dB (+2.29 vs bicubic) | 42.4s
+epoch  15/30 | loss 0.002656 | eval 31.30 dB (+2.23 vs bicubic) | 42.3s
+epoch  16/30 | loss 0.002676 | eval 31.38 dB (+2.31 vs bicubic) | 42.4s
+epoch  17/30 | loss 0.002656 | eval 31.26 dB (+2.19 vs bicubic) | 42.3s
+epoch  18/30 | loss 0.002691 | eval 31.33 dB (+2.26 vs bicubic) | 42.5s
+epoch  19/30 | loss 0.002651 | eval 31.48 dB (+2.40 vs bicubic) | 42.4s  <- best, saved
+epoch  20/30 | loss 0.002628 | eval 31.35 dB (+2.27 vs bicubic) | 42.4s
+epoch  21/30 | loss 0.002667 | eval 31.43 dB (+2.36 vs bicubic) | 42.3s
+epoch  22/30 | loss 0.002657 | eval 31.45 dB (+2.38 vs bicubic) | 42.3s
+epoch  23/30 | loss 0.002634 | eval 31.43 dB (+2.36 vs bicubic) | 42.4s
+epoch  24/30 | loss 0.002644 | eval 31.48 dB (+2.41 vs bicubic) | 42.3s  <- best, saved
+epoch  25/30 | loss 0.002640 | eval 31.37 dB (+2.29 vs bicubic) | 42.4s
+epoch  26/30 | loss 0.002628 | eval 31.39 dB (+2.31 vs bicubic) | 42.3s
+epoch  27/30 | loss 0.002643 | eval 31.44 dB (+2.36 vs bicubic) | 42.4s
+epoch  28/30 | loss 0.002588 | eval 31.50 dB (+2.42 vs bicubic) | 42.3s  <- best, saved
+epoch  29/30 | loss 0.002592 | eval 31.42 dB (+2.34 vs bicubic) | 42.3s
+epoch  30/30 | loss 0.002601 | eval 31.48 dB (+2.40 vs bicubic) | 42.2s
+done. best eval PSNR = 31.50 dB -> models/srcnn_D_res8_best.pth
+per-image PSNR  (bicubic -> model):
+  baby.png                      32.64 ->  33.73   (+1.08)
+  bird.png                      31.15 ->  33.77   (+2.61)
+  butterfly.png                 22.73 ->  27.56   (+4.83)
+  head.png                      31.62 ->  32.32   (+0.70)
+  woman.png                     27.24 ->  30.01   (+2.77)
+spread: bicubic std 3.665 | model std 2.386 | model range 6.20 dB
